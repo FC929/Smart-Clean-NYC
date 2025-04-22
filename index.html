@@ -68,9 +68,24 @@
           <div style="height:40px;"></div>
                 
           <p>WCP Average Speed: <span id="speed">0</span> mph</p>
-          <p>WCP Total Distance: <span id="distance">0</span> miles</p>
-          <p>WCP Total Time: <span id="time">0</span> mins</p>
-          <button id="resetBtn">Reset Restaurants Selection</button>                                                          
+<p>WCP Total Distance: <span id="distance">0</span> miles</p>
+<p>WCP Total Time: <span id="time">0</span> mins</p>
+
+<!-- Show Restaurants 按钮（在上） -->
+<button id="toggleRestaurantsBtn" style="width: 220px; padding: 6px 10px; font-size: 14px; margin-bottom: 10px;">
+  Show All Restaurants
+</button>
+
+<!-- 搜索框（在按钮下） -->
+<input id="restaurantSearch" type="text" placeholder="Search restaurant..." style="width: 220px; padding: 6px 10px; font-size: 14px; margin-bottom: 10px;" />
+
+<!-- 搜索建议列表 -->
+<div id="suggestions"></div>
+
+<!-- ✅ Reset 按钮保持不动 -->
+<button id="resetBtn">Reselect Collection Point</button>
+
+
       </div>
     </div>
     <script src="app.js"></script>

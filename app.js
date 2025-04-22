@@ -1,3 +1,96 @@
+
+let restaurantFeatures = [];
+
+function setupSearchBox(features) {
+    const searchInput = document.getElementById('restaurantSearch');
+    const suggestionBox = document.getElementById('suggestions');
+
+    searchInput.addEventListener('input', function (e) {
+        const query = e.target.value.toLowerCase();
+        suggestionBox.innerHTML = '';
+
+        if (!query) {
+            suggestionBox.style.display = 'none';
+            return;
+        }
+
+        const matches = features.filter(f =>
+            f.properties.title.toLowerCase().includes(query)
+        ).slice(0, 10);
+
+        if (matches.length === 0) {
+            suggestionBox.style.display = 'none';
+            return;
+        }
+
+        matches.forEach(match => {
+            const div = document.createElement('div');
+            div.textContent = `${match.properties.title} — ${match.properties.street} (${match.properties.zipcode})`;
+            div.style.padding = '6px 10px';
+            div.style.cursor = 'pointer';
+            div.style.borderBottom = '1px solid #eee';
+
+            div.addEventListener('click', () => {
+                const coords = match.geometry.coordinates;
+                map.flyTo({ center: coords, zoom: 15 });
+
+                new mapboxgl.Popup()
+                    .setLngLat(coords)
+                    .setHTML(`<strong>${match.properties.title}</strong>`)
+                    .addTo(map);
+
+                suggestionBox.style.display = 'none';
+                searchInput.value = match.properties.title;
+            });
+
+            suggestionBox.appendChild(div);
+        });
+
+        suggestionBox.style.display = 'block';
+    });
+}
+
+
+async function loadRestaurantsGeoJSON() {
+    const response = await fetch('Manhattan_Restaurants.csv');
+    const text = await response.text();
+    const rows = text.split('\n');
+
+    const geojson = {
+        type: 'FeatureCollection',
+        features: []
+    };
+
+    rows.slice(1).forEach((row) => {
+        if (!row.trim()) return;
+        const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
+        if (!cols || cols.length < 6) return;
+
+        const dba = cols[0].replace(/"/g, '').trim();
+        const zipcode = cols[2]?.replace(/"/g, '').trim();
+        const lat = parseFloat(cols[3]);
+        const lon = parseFloat(cols[4]);
+        const street = cols[5]?.replace(/"/g, '').trim();
+
+        if (!isNaN(lat) && !isNaN(lon)) {
+            geojson.features.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [lon, lat]
+                },
+                properties: {
+                    title: dba,
+                    zipcode: zipcode,
+                    street: street
+                }
+            });
+        }
+    });
+
+    return geojson;
+}
+
 mapboxgl.accessToken = 'pk.eyJ1IjoiY2hlbmZlbmc5MjkiLCJhIjoiY20yYXBld2FmMGl5ZDJzcHk3ZHF4bjQ2NiJ9.Gr_AF5ANKXy62O-h1iiNjg';
 
 // 初始化地图
@@ -7,6 +100,43 @@ const map = new mapboxgl.Map({
     center: [-73.970, 40.7858],
     zoom: 11.3
 });
+
+let restaurantLayerVisible = false;
+let restaurantSourceLoaded = false;
+
+document.getElementById("toggleRestaurantsBtn").addEventListener("click", () => {
+    if (!restaurantSourceLoaded) {
+        loadRestaurantsGeoJSON().then(geojson => {
+    restaurantFeatures = geojson.features;
+    setupSearchBox(restaurantFeatures);
+            map.addSource("restaurants", {
+                type: "geojson",
+                data: geojson
+            });
+
+            map.addLayer({
+                id: "restaurants-points",
+                type: "circle",
+                source: "restaurants",
+                paint: {
+                    "circle-color": "#b4e3c0",
+                    "circle-radius": 6,
+                    "circle-stroke-width": 1,
+                    "circle-stroke-color": "#fff"
+                }
+            });
+
+            restaurantSourceLoaded = true;
+            restaurantLayerVisible = true;
+            document.getElementById("toggleRestaurantsBtn").innerText = "Hide Restaurants";
+        });
+    } else {
+        restaurantLayerVisible = !restaurantLayerVisible;
+        map.setLayoutProperty("restaurants-points", "visibility", restaurantLayerVisible ? "visible" : "none");
+        document.getElementById("toggleRestaurantsBtn").innerText = restaurantLayerVisible ? "Hide Restaurants" : "Show Restaurants";
+    }
+});
+
 
 // 预定义的起点
 const startPoints = [
@@ -70,6 +200,82 @@ function findNearestPoint(point, pointsArray) {
 
 // 监听点击事件，添加新的中间点（限制最多 5 个）
 map.on('click', (e) => {
+    loadRestaurantsGeoJSON().then(geojson => {
+    restaurantFeatures = geojson.features;
+    setupSearchBox(restaurantFeatures);
+        map.addSource('restaurants', {
+            type: 'geojson',
+            data: geojson,
+            cluster: false
+        });
+    
+        map.addLayer({
+            id: 'restaurants-points',
+            type: 'circle',
+            source: 'restaurants',
+            paint: {
+                'circle-color': '#b4e3c0',
+                'circle-radius': 6,
+                'circle-stroke-width': 1,
+                'circle-stroke-color': '#fff'
+            }
+        });
+    
+        let restaurantFeatures = geojson.features;
+    
+        const searchInput = document.getElementById('restaurantSearch');
+        const suggestionBox = document.getElementById('suggestions');
+    
+        searchInput.addEventListener('input', function (e) {
+            const query = e.target.value.toLowerCase();
+            suggestionBox.innerHTML = '';
+    
+            if (!query) {
+                suggestionBox.style.display = 'none';
+                return;
+            }
+    
+            const matches = restaurantFeatures.filter(f =>
+                f.properties.title.toLowerCase().includes(query) ||
+                f.properties.zipcode.toLowerCase().includes(query)
+            ).slice(0, 10);
+    
+            if (matches.length === 0) {
+                suggestionBox.style.display = 'none';
+                return;
+            }
+    
+            matches.forEach(match => {
+                const div = document.createElement('div');
+                div.textContent = `${match.properties.title} — ${match.properties.street} (${match.properties.zipcode})`;
+                div.style.padding = '6px 10px';
+                div.style.cursor = 'pointer';
+                div.style.borderBottom = '1px solid #eee';
+    
+                div.addEventListener('click', () => {
+                    const coords = match.geometry.coordinates;
+                    const title = match.properties.title;
+                    const street = match.properties.street;
+                    const zipcode = match.properties.zipcode;
+    
+                    map.flyTo({ center: coords, zoom: 15 });
+    
+                    new mapboxgl.Popup()
+                        .setLngLat(coords)
+                        .setHTML(`<strong>${title}</strong><br/>${street}<br/>${zipcode}`)
+                        .addTo(map);
+    
+                    suggestionBox.style.display = 'none';
+                    searchInput.value = title;
+                });
+    
+                suggestionBox.appendChild(div);
+            });
+    
+            suggestionBox.style.display = 'block';
+        });
+    });
+    
     if (midPoints.length >= 5) {
         alert("Maximum of five restaurant collection points allowed！");
         return; // 直接返回，不添加更多中间点
@@ -266,4 +472,14 @@ function animateRouteWithPause(route, midPoints) {
 // 添加“Reset”按钮的监听器
 document.getElementById('resetBtn').addEventListener('click', () => {
     resetRoute(); // 清除中间点和路线
+});
+
+let restaurantData = [];
+
+
+map.on("load", () => {
+    loadRestaurantsGeoJSON().then(geojson => {
+        restaurantFeatures = geojson.features;
+        setupSearchBox(restaurantFeatures);
+    });
 });
