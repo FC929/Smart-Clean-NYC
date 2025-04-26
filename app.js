@@ -32,16 +32,20 @@ function setupSearchBox(features) {
 
             div.addEventListener('click', () => {
                 const coords = match.geometry.coordinates;
+                const title = match.properties.title;
+                const street = match.properties.street;
+                const zipcode = match.properties.zipcode;
+            
                 map.flyTo({ center: coords, zoom: 15 });
-
+            
                 new mapboxgl.Popup()
                     .setLngLat(coords)
-                    .setHTML(`<strong>${match.properties.title}</strong>`)
+                    .setHTML(`<strong>${title}</strong><br/>${street}<br/>${zipcode}`)
                     .addTo(map);
-
+            
                 suggestionBox.style.display = 'none';
-                searchInput.value = match.properties.title;
-            });
+                searchInput.value = title;
+            });            
 
             suggestionBox.appendChild(div);
         });
