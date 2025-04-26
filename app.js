@@ -39,9 +39,10 @@ function setupSearchBox(features) {
                 map.flyTo({ center: coords, zoom: 15 });
             
                 new mapboxgl.Popup()
-                    .setLngLat(coords)
-                    .setHTML(`<strong>${title}</strong><br/>${street}<br/>${zipcode}`)
-                    .addTo(map);
+                .setLngLat(coords)
+                .setHTML(`<strong>${title}</strong><br/>Street: ${street}<br/>Zipcode: ${zipcode}<br/>Cuisine: ${match.properties.cuisine || 'Nah'}`)
+                .addTo(map);
+                       
             
                 suggestionBox.style.display = 'none';
                 searchInput.value = title;
@@ -70,11 +71,12 @@ async function loadRestaurantsGeoJSON() {
         const cols = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
         if (!cols || cols.length < 6) return;
 
-        const dba = cols[0].replace(/"/g, '').trim();
-        const zipcode = cols[2]?.replace(/"/g, '').trim();
-        const lat = parseFloat(cols[3]);
-        const lon = parseFloat(cols[4]);
-        const street = cols[5]?.replace(/"/g, '').trim();
+        const dba = cols[0]?.replace(/"/g, '').trim();  // 店名
+        const zipcode = cols[2]?.replace(/"/g, '').trim();  // 邮编
+        const lat = parseFloat(cols[3]);  // 纬度
+        const lon = parseFloat(cols[4]);  // 经度
+        const street = cols[5]?.replace(/"/g, '').trim();  // 街道
+        const cuisine = cols[6]?.replace(/"/g, '').trim();  // 🍴 菜系（第7列！！）          
 
         if (!isNaN(lat) && !isNaN(lon)) {
             geojson.features.push({
@@ -85,10 +87,11 @@ async function loadRestaurantsGeoJSON() {
                 },
                 properties: {
                     title: dba,
+                    cuisine: cuisine,   // 🍴 加了这一行
                     zipcode: zipcode,
                     street: street
                 }
-            });
+            });            
         }
     });
 
@@ -265,9 +268,9 @@ map.on('click', (e) => {
                     map.flyTo({ center: coords, zoom: 15 });
     
                     new mapboxgl.Popup()
-                        .setLngLat(coords)
-                        .setHTML(`<strong>${title}</strong><br/>${street}<br/>${zipcode}`)
-                        .addTo(map);
+                    .setLngLat(coords)
+                    .setHTML(`<strong>${title}</strong><br/>Street: ${street}<br/>Zipcode: ${zipcode}<br/>Cuisine: ${cuisine}`)
+                    .addTo(map);                
     
                     suggestionBox.style.display = 'none';
                     searchInput.value = title;
